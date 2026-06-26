@@ -799,8 +799,27 @@
   <div id="view-goals" class="view">
     <!-- Year goals -->
     <div class="card">
-      <div class="card-title">⭐ أهداف عام ١٤٤٨</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.6rem;">
+        <span>⭐ أهداف عام ١٤٤٨</span>
+        <button onclick="openCategoryManager()" style="background:var(--gold-pale);border:1px solid var(--gold-light);border-radius:20px;padding:0.35rem 0.9rem;font-size:0.78rem;color:var(--brown);cursor:pointer;font-family:'Cairo',sans-serif;font-weight:700;white-space:nowrap;">+ أضيفي تصنيف جديد</button>
+      </div>
       <div class="goals-columns" id="year-goals-grid"></div>
+    </div>
+
+    <!-- Custom Category Modal -->
+    <div id="category-manager" style="display:none;position:fixed;inset:0;background:rgba(44,24,16,0.7);z-index:300;align-items:center;justify-content:center;">
+      <div style="background:var(--white);border-radius:20px;padding:1.5rem;max-width:420px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;border-bottom:2px solid var(--gold-pale);padding-bottom:0.7rem;">
+          <div style="font-family:'Scheherazade New',serif;font-size:1.3rem;color:var(--gold);">⭐ تصنيف هدف جديد</div>
+          <button onclick="closeCategoryManager()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-light);">✕</button>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.8rem;">مثلاً: اسم شخص معين له هدف خاص، أو أي تصنيف تحتاجينه.</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;">
+          <input type="text" id="new-cat-emoji" placeholder="🌟" maxlength="4" style="width:60px;text-align:center;border:1.5px solid var(--beige-dark);border-radius:10px;padding:0.6rem 0.4rem;font-size:1.1rem;background:var(--beige);">
+          <input type="text" id="new-cat-name" placeholder="اسم التصنيف..." style="flex:1;border:1.5px solid var(--beige-dark);border-radius:10px;padding:0.6rem 0.8rem;font-family:'Cairo',sans-serif;font-size:0.9rem;background:var(--beige);" onkeydown="if(event.key==='Enter') addCustomCategory()">
+        </div>
+        <button onclick="addCustomCategory()" style="width:100%;background:linear-gradient(135deg,var(--gold),var(--gold-light));border:none;border-radius:10px;padding:0.7rem;font-family:'Cairo',sans-serif;font-weight:700;cursor:pointer;color:var(--text-dark);">+ أضيفي التصنيف</button>
+      </div>
     </div>
 
     <!-- Quarters -->
@@ -1456,14 +1475,60 @@ const GOAL_CATEGORIES = [
   { key:'quran',   icon:'📖', label:'القرآن الكريم',      color:'var(--brown)' }
 ];
 
+function getCustomCategories() {
+  return load('custom_goal_categories', []);
+}
+
+function getAllCategories() {
+  const custom = getCustomCategories().map(c => ({ ...c, custom: true }));
+  return [...GOAL_CATEGORIES, ...custom];
+}
+
+function openCategoryManager() {
+  document.getElementById('new-cat-emoji').value = '';
+  document.getElementById('new-cat-name').value = '';
+  document.getElementById('category-manager').style.display = 'flex';
+  setTimeout(() => document.getElementById('new-cat-name').focus(), 50);
+}
+
+function closeCategoryManager() {
+  document.getElementById('category-manager').style.display = 'none';
+}
+
+function addCustomCategory() {
+  const nameInput = document.getElementById('new-cat-name');
+  const emojiInput = document.getElementById('new-cat-emoji');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const icon = emojiInput.value.trim() || '🌟';
+  const palette = ['#e67e22','#16a085','#c0392b','#2c3e50','#d35400','#27ae60','#7f8c8d','#9b59b6'];
+  const list = getCustomCategories();
+  const key = 'custom_' + Date.now();
+  const color = palette[list.length % palette.length];
+  list.push({ key, icon, label: name, color });
+  save('custom_goal_categories', list);
+  closeCategoryManager();
+  renderYearGoals();
+}
+
+function deleteCustomCategory(key) {
+  let list = getCustomCategories();
+  list = list.filter(c => c.key !== key);
+  save('custom_goal_categories', list);
+  localStorage.removeItem('journal1448_ygoals_'+key);
+  renderYearGoals();
+}
+
 function renderYearGoals() {
   const grid = document.getElementById('year-goals-grid');
-  grid.innerHTML = GOAL_CATEGORIES.map(cat => {
+  const categories = getAllCategories();
+  grid.innerHTML = categories.map(cat => {
     const goals = load('ygoals_'+cat.key, []);
     return `
     <div class="goal-category">
-      <div class="goal-cat-title" style="color:${cat.color}">
-        ${cat.icon} ${cat.label}
+      <div class="goal-cat-title" style="color:${cat.color};justify-content:space-between;">
+        <span>${cat.icon} ${cat.label}</span>
+        ${cat.custom ? `<button onclick="deleteCustomCategory('${cat.key}')" style="background:none;border:none;cursor:pointer;color:var(--text-light);font-size:0.85rem;padding:0.1rem 0.3rem;" title="حذف التصنيف">🗑</button>` : ''}
       </div>
       <ul class="goal-list" id="glist-${cat.key}">
         ${goals.map((g,i) => `
