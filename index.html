@@ -283,6 +283,35 @@
   .habit-check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
   .habit-item.done .habit-check::after { content: '✓'; }
 
+  .lessons-add-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .lessons-add-row input {
+    flex: 1; border: 1.5px solid var(--beige-dark); border-radius: 10px;
+    padding: 0.6rem 0.8rem; font-family: 'Cairo', sans-serif; font-size: 0.85rem;
+    background: var(--beige); color: var(--text-dark);
+  }
+  .lessons-add-row input:focus { outline: none; border-color: var(--gold-light); background: var(--white); }
+  .lessons-add-row button {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light)); border: none;
+    border-radius: 10px; padding: 0.6rem 1rem; font-family: 'Cairo', sans-serif;
+    font-weight: 700; font-size: 0.82rem; color: var(--text-dark); cursor: pointer; white-space: nowrap;
+  }
+  .lessons-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .lesson-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    background: var(--beige); border: 1.5px solid var(--beige-dark);
+    border-radius: 10px; padding: 0.55rem 0.7rem; font-size: 0.85rem; color: var(--text-mid);
+  }
+  .lesson-item.done { background: var(--green-pale); border-color: var(--green-light); color: var(--green-dark); }
+  .lesson-item .lesson-check {
+    width: 18px; height: 18px; min-width: 18px; border-radius: 4px; border: 2px solid currentColor;
+    display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer;
+  }
+  .lesson-item.done .lesson-check::after { content: '✓'; }
+  .lesson-item .lesson-text { flex: 1; cursor: pointer; line-height: 1.5; }
+  .lesson-item.done .lesson-text { text-decoration: line-through; opacity: 0.75; }
+  .lesson-item .lesson-del { background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 0.95rem; padding: 0 0.2rem; }
+  .lessons-empty { font-size: 0.8rem; color: var(--text-light); padding: 0.3rem 0.2rem; }
+
   /* Photo section */
     .photo-area {
     border: 2px dashed var(--gold-light); border-radius: 12px;
@@ -720,6 +749,16 @@
 
       <div class="ornamental-divider">✦ ✦ ✦</div>
 
+      <!-- Lessons -->
+      <div class="journal-section">
+        <div class="journal-label">💡 تعلّمت اليوم</div>
+        <div class="lessons-add-row">
+          <input type="text" id="lesson-input" placeholder="أضيفي درسًا أو حكمة تعلّمتِها..." onkeydown="if(event.key==='Enter'){addLessonItem();}">
+          <button onclick="addLessonItem()">+ أضيفي</button>
+        </div>
+        <div class="lessons-list" id="lessons-list"></div>
+      </div>
+
       <!-- Journal text -->
       <div class="journal-section">
         <div class="journal-label">📖 مذكراتي</div>
@@ -730,12 +769,6 @@
       <div class="journal-section">
         <div class="journal-label">🤲 أشكر الله اليوم على...</div>
         <textarea class="journal-textarea" id="gratitude-text" placeholder="اذكري نِعَمَ الله عليكِ اليوم..." rows="3"></textarea>
-      </div>
-
-      <!-- Lessons -->
-      <div class="journal-section">
-        <div class="journal-label">💡 تعلّمت اليوم</div>
-        <textarea class="journal-textarea" id="lessons-text" placeholder="ما الدرس أو الحكمة التي أخذتِها؟" rows="3"></textarea>
       </div>
 
       <!-- Today plans -->
@@ -1062,6 +1095,43 @@ function deleteHabit(idx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  LESSONS CHECKLIST ("تعلّمت اليوم")
+// ═══════════════════════════════════════════════════════════════
+function renderLessonsList() {
+  const list = document.getElementById('lessons-list');
+  if (!currentDayLessons.length) {
+    list.innerHTML = `<div class="lessons-empty">لم تُضيفي أي درس لهذا اليوم بعد</div>`;
+    return;
+  }
+  list.innerHTML = currentDayLessons.map((item, i) => `
+    <div class="lesson-item${item.done ? ' done' : ''}">
+      <div class="lesson-check" onclick="toggleLessonItem(${i})"></div>
+      <span class="lesson-text" onclick="toggleLessonItem(${i})">${item.text}</span>
+      <button class="lesson-del" onclick="deleteLessonItem(${i})" title="حذف">🗑</button>
+    </div>
+  `).join('');
+}
+
+function addLessonItem() {
+  const input = document.getElementById('lesson-input');
+  const text = input.value.trim();
+  if (!text) return;
+  currentDayLessons.push({ text, done: false });
+  input.value = '';
+  renderLessonsList();
+}
+
+function toggleLessonItem(idx) {
+  currentDayLessons[idx].done = !currentDayLessons[idx].done;
+  renderLessonsList();
+}
+
+function deleteLessonItem(idx) {
+  currentDayLessons.splice(idx, 1);
+  renderLessonsList();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let currentDayDate = new Date();
@@ -1074,6 +1144,7 @@ if (currentDayDate > Y1448_END) currentDayDate = new Date(Y1448_END);
 let currentMonthIdx = 0;
 let selectedMood = '';
 let currentDayPhotos = [];
+let currentDayLessons = [];
 
 // ═══════════════════════════════════════════════════════════════
 //  STORAGE
@@ -1295,8 +1366,18 @@ function loadDayView() {
   // Texts
   document.getElementById('journal-text').value = saved.journal || '';
   document.getElementById('gratitude-text').value = saved.gratitude || '';
-  document.getElementById('lessons-text').value = saved.lessons || '';
   document.getElementById('tomorrow-text').value = saved.tomorrow || '';
+
+  // Lessons — checklist
+  if (Array.isArray(saved.lessons)) {
+    currentDayLessons = saved.lessons;
+  } else if (typeof saved.lessons === 'string' && saved.lessons.trim()) {
+    // backward-compat: convert old free-text lesson into a single checklist item
+    currentDayLessons = [{ text: saved.lessons.trim(), done: false }];
+  } else {
+    currentDayLessons = [];
+  }
+  renderLessonsList();
 
   // Photos
   currentDayPhotos = saved.photos || [];
@@ -1358,7 +1439,7 @@ function saveDay() {
     habits,
     journal: document.getElementById('journal-text').value,
     gratitude: document.getElementById('gratitude-text').value,
-    lessons: document.getElementById('lessons-text').value,
+    lessons: currentDayLessons,
     tomorrow: document.getElementById('tomorrow-text').value,
     photos: currentDayPhotos,
     savedAt: new Date().toISOString()
